@@ -14,9 +14,7 @@ const MatrixTransformationApp = () => {
   const [trainData, setTrainData] = useState([]);
   const [testData, setTestData] = useState([]);
   const [currentSet, setCurrentSet] = useState('train');
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [code, setCode] = useState('');
-  const [viewMode, setViewMode] = useState('single');
 
   const handleJsonUpload = (e) => {
     const file = e.target.files[0];
@@ -26,7 +24,6 @@ const MatrixTransformationApp = () => {
         const data = JSON.parse(event.target.result);
         setTrainData(data.train || []);
         setTestData(data.test || []);
-        setCurrentIndex(0);
       } catch (error) {
         console.error("Error parsing JSON:", error);
         alert("Error parsing JSON file. Please check the file format.");
@@ -35,59 +32,31 @@ const MatrixTransformationApp = () => {
     reader.readAsText(file);
   };
 
-  const getCurrentData = () => currentSet === 'train' ? trainData : testData;
-
-  const handlePrevious = () => setCurrentIndex(prev => Math.max(0, prev - 1));
-  const handleNext = () => setCurrentIndex(prev => Math.min(getCurrentData().length - 1, prev + 1));
-
   const handleCodeSubmit = (e) => {
     e.preventDefault();
     console.log("Code submitted:", code);
     // TODO: Implement actual matrix transformation
   };
 
-  const getMaxOutputDimensions = () => {
-    let maxRows = 0;
-    let maxCols = 0;
-    getCurrentData().forEach(example => {
-      if (example.output) {
-        maxRows = Math.max(maxRows, example.output.length);
-        maxCols = Math.max(maxCols, example.output[0].length);
-      }
-    });
-    return { maxRows, maxCols };
-  };
-
-  const renderMatrix = (matrix, title, isOutput = false) => {
-    const { maxRows, maxCols } = getMaxOutputDimensions();
-    const cellSize = isOutput ? 30 : 30 * (maxRows / matrix.length);
-
-    return (
-      <div className="w-full">
-        <h3 className="text-sm font-semibold mb-1">{title}</h3>
-        <div className="border border-gray-300 p-2 inline-block">
-          <div 
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${matrix[0].length}, ${cellSize}px)`,
-              gap: '1px',
-            }}
-          >
-            {matrix.flat().map((cell, index) => (
-              <div
-                key={index}
-                style={{ 
-                  width: `${cellSize}px`, 
-                  height: `${cellSize}px`, 
-                  backgroundColor: colors[cell],
-                }}
-              />
-            ))}
-          </div>
-        </div>
+  const renderMatrix = (matrix, title) => (
+    <div className="w-full">
+      <h3 className="text-sm font-semibold mb-1">{title}</h3>
+      <div 
+        className="grid gap-px border border-gray-300"
+        style={{ 
+          gridTemplateColumns: `repeat(${matrix[0]?.length || 1}, minmax(0, 1fr))`,
+        }}
+      >
+        {matrix.flat().map((cell, index) => (
+          <div
+            key={index}
+            className="aspect-square w-full"
+            style={{ backgroundColor: colors[cell] }}
+          />
+        ))}
       </div>
-    );
-  };
+    </div>
+  );
 
   const renderExample = (example, index) => (
     <Card key={index} className="mb-4">
@@ -95,10 +64,10 @@ const MatrixTransformationApp = () => {
         <h3 className="text-lg font-semibold">Example {index + 1}</h3>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {renderMatrix(example.input, "Input")}
           {renderMatrix(example.input, "Intermediate")}
-          {currentSet === 'train' && renderMatrix(example.output, "True Output", true)}
+          {currentSet === 'train' && renderMatrix(example.output, "True Output")}
         </div>
       </CardContent>
     </Card>
@@ -121,44 +90,22 @@ const MatrixTransformationApp = () => {
                 className="flex-grow"
               />
             </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <span>Test Mode</span>
-                <Switch
-                  checked={currentSet === 'test'}
-                  onCheckedChange={(checked) => setCurrentSet(checked ? 'test' : 'train')}
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <span>View All</span>
-                <Switch
-                  checked={viewMode === 'all'}
-                  onCheckedChange={(checked) => setViewMode(checked ? 'all' : 'single')}
-                />
-              </div>
+            <div className="flex items-center space-x-2">
+              <span>Test Mode</span>
+              <Switch
+                checked={currentSet === 'test'}
+                onCheckedChange={(checked) => setCurrentSet(checked ? 'test' : 'train')}
+              />
             </div>
           </CardContent>
         </Card>
 
-        {getCurrentData().length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold mb-4">{currentSet === 'train' ? 'Training' : 'Test'} Examples</h2>
-            {viewMode === 'single' ? (
-              <div>
-                {getCurrentData()[currentIndex] && renderExample(getCurrentData()[currentIndex], currentIndex)}
-                <div className="flex justify-between mt-4">
-                  <Button onClick={handlePrevious} disabled={currentIndex === 0}>Previous</Button>
-                  <span>Example {currentIndex + 1} of {getCurrentData().length}</span>
-                  <Button onClick={handleNext} disabled={currentIndex === getCurrentData().length - 1}>Next</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {getCurrentData().map((example, index) => renderExample(example, index))}
-              </div>
-            )}
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold mb-4">{currentSet === 'train' ? 'Training' : 'Test'} Examples</h2>
+          <div className="space-y-4">
+            {(currentSet === 'train' ? trainData : testData).map((example, index) => renderExample(example, index))}
           </div>
-        )}
+        </div>
 
         <Card className="mb-6">
           <CardHeader>
@@ -200,6 +147,7 @@ const MatrixTransformationApp = () => {
     </div>
   );
 };
+
 
 export default function Home() {
   return <MatrixTransformationApp />;
