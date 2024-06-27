@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import React, { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
@@ -15,6 +15,8 @@ const MatrixTransformationApp = () => {
   const [testData, setTestData] = useState([]);
   const [currentSet, setCurrentSet] = useState('train');
   const [code, setCode] = useState('');
+  const [viewAll, setViewAll] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleJsonUpload = (e) => {
     const file = e.target.files[0];
@@ -24,6 +26,7 @@ const MatrixTransformationApp = () => {
         const data = JSON.parse(event.target.result);
         setTrainData(data.train || []);
         setTestData(data.test || []);
+        setCurrentIndex(0);
       } catch (error) {
         console.error("Error parsing JSON:", error);
         alert("Error parsing JSON file. Please check the file format.");
@@ -73,6 +76,17 @@ const MatrixTransformationApp = () => {
     </Card>
   );
 
+  const getCurrentData = () => currentSet === 'train' ? trainData : testData;
+
+  const handlePrevious = () => setCurrentIndex(prev => Math.max(0, prev - 1));
+  const handleNext = () => setCurrentIndex(prev => Math.min(getCurrentData().length - 1, prev + 1));
+
+  useEffect(() => {
+    if (currentSet === 'test') {
+      setViewAll(true);
+    }
+  }, [currentSet]);
+
   return (
     <div className="p-4 min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto">
@@ -90,21 +104,42 @@ const MatrixTransformationApp = () => {
                 className="flex-grow"
               />
             </div>
-            <div className="flex items-center space-x-2">
-              <span>Test Mode</span>
-              <Switch
-                checked={currentSet === 'test'}
-                onCheckedChange={(checked) => setCurrentSet(checked ? 'test' : 'train')}
-              />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span>Test Mode</span>
+                <Switch
+                  checked={currentSet === 'test'}
+                  onCheckedChange={(checked) => setCurrentSet(checked ? 'test' : 'train')}
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <span>View All Examples</span>
+                <Switch
+                  checked={viewAll}
+                  onCheckedChange={setViewAll}
+                  disabled={currentSet === 'test'}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <div className="mb-6">
           <h2 className="text-2xl font-semibold mb-4">{currentSet === 'train' ? 'Training' : 'Test'} Examples</h2>
-          <div className="space-y-4">
-            {(currentSet === 'train' ? trainData : testData).map((example, index) => renderExample(example, index))}
-          </div>
+          {viewAll ? (
+            <div className="space-y-4">
+              {getCurrentData().map((example, index) => renderExample(example, index))}
+            </div>
+          ) : (
+            <div>
+              {getCurrentData()[currentIndex] && renderExample(getCurrentData()[currentIndex], currentIndex)}
+              <div className="flex justify-between mt-4">
+                <Button onClick={handlePrevious} disabled={currentIndex === 0}>Previous</Button>
+                <span>Example {currentIndex + 1} of {getCurrentData().length}</span>
+                <Button onClick={handleNext} disabled={currentIndex === getCurrentData().length - 1}>Next</Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <Card className="mb-6">
@@ -147,7 +182,6 @@ const MatrixTransformationApp = () => {
     </div>
   );
 };
-
 
 export default function Home() {
   return <MatrixTransformationApp />;
